@@ -250,7 +250,7 @@
                 <div class="flex-1">
                     <h2 id="details-title" class="text-4xl font-bold mb-2"></h2>
                     <p id="details-genres" class="text-gray-400 text-lg mb-4"></p>
-                    <p id="details-description" class="text-gray-200 leading-relaxed mb-6">Beschreibungstext...</p>
+                    <p id="details-summary" class="text-gray-200 leading-relaxed mb-6 italic"></p>
                     <button id="details-play-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full text-lg hidden">
                         <i class="fas fa-play mr-2"></i>Wiedergabe starten
                     </button>
@@ -338,7 +338,7 @@
         const detailsCover = document.getElementById('details-cover');
         const detailsTitle = document.getElementById('details-title');
         const detailsGenres = document.getElementById('details-genres');
-        const detailsDescription = document.getElementById('details-description');
+        const detailsSummary = document.getElementById('details-summary');
         const detailsPlayButton = document.getElementById('details-play-button');
         const detailsContent = document.getElementById('details-content');
         
@@ -351,7 +351,7 @@
         let mediaItems = []; // Da wir File-Objekte nicht speichern können, starten wir immer leer.
         let recentlyWatched = JSON.parse(localStorage.getItem('arkivum_watched') || '[]');
         let selectedType = '';
-        let mediaData = { title: '', coverFile: null, genres: [], files: [], seasons: [] };
+        let mediaData = { title: '', coverFile: null, genres: [], summary: '', files: [], seasons: [] };
         let currentPlaylist = [];
         let currentEpisodeIndex = 0;
         let draggedItem = null;
@@ -394,7 +394,7 @@
             movieFilesSection.classList.add('hidden');
             seasonsContainer.innerHTML = '';
             selectedType = '';
-            mediaData = { title: '', coverFile: null, genres: [], files: [], seasons: [] };
+            mediaData = { title: '', coverFile: null, genres: [], summary: '', files: [], seasons: [] };
             showView('add-form');
         });
 
@@ -635,6 +635,66 @@
                 return [];
             }
         }
+        
+        /**
+         * Fetches a summary for a given title from Wikipedia using a Google Search and Browsing tool.
+         * The summary is extracted from the first few sentences of the article's main content.
+         * @param {string} title The title to search for.
+         * @returns {Promise<string>} A promise that resolves to the summary text.
+         */
+        async function fetchSummaryFromWikipedia(title) {
+            const encodedTitle = encodeURIComponent(title);
+            const searchQueries = [`${encodedTitle} Wikipedia Deutsch`, `${encodedTitle} film Wikipedia`, `${encodedTitle} serie Wikipedia`];
+            
+            try {
+                const searchResults = await google_search.search(queries=searchQueries);
+                
+                let wikipediaUrl = null;
+                for (const result of searchResults.results) {
+                    if (result.url && result.url.includes("de.wikipedia.org")) {
+                        wikipediaUrl = result.url;
+                        break;
+                    }
+                }
+
+                if (!wikipediaUrl) {
+                    console.error("Keine Wikipedia-Seite gefunden.");
+                    return "Leider konnte keine Zusammenfassung gefunden werden.";
+                }
+
+                const pageContent = await browsing.browse(query="", url=wikipediaUrl);
+                
+                // Simple extraction of the first paragraph
+                let parser = new DOMParser();
+                let doc = parser.parseFromString(pageContent, "text/html");
+                let firstParagraph = doc.querySelector('p');
+
+                if (firstParagraph) {
+                    // Split the text by sentence terminators
+                    let text = firstParagraph.textContent;
+                    let sentences = text.match(/[^.!?]+[.!?]/g) || [];
+                    
+                    // Filter for a reasonable summary length (2-15 sentences)
+                    let summarySentences = sentences.slice(0, Math.min(sentences.length, 15));
+                    if (summarySentences.length < 2 && sentences.length >= 2) {
+                        summarySentences = sentences.slice(0, 2);
+                    }
+
+                    // Join and clean up the summary
+                    let summary = summarySentences.join(' ').trim();
+                    // Remove parenthetical information at the beginning
+                    summary = summary.replace(/^\(.*?\)/, '').trim();
+
+                    return summary || "Leider konnte keine Zusammenfassung gefunden werden.";
+                } else {
+                    return "Leider konnte keine Zusammenfassung gefunden werden.";
+                }
+
+            } catch (error) {
+                console.error("Fehler beim Abrufen der Zusammenfassung von Wikipedia:", error);
+                return "Leider konnte keine Zusammenfassung gefunden werden.";
+            }
+        }
 
         // Formular absenden
         mediaForm.addEventListener('submit', async (event) => {
@@ -652,6 +712,7 @@
                 type: selectedType,
                 coverUrl: URL.createObjectURL(mediaData.coverFile),
                 genres: [],
+                summary: 'Lade Zusammenfassung...', // Placeholder
                 isFavorite: false,
                 playbackData: { seasonIndex: 0, episodeIndex: 0, position: 0 }
             };
@@ -666,15 +727,20 @@
                 }));
             }
             
-            // Genres von der Gemini API abrufen
-            showModal('Genres werden ermittelt...', true);
+            // Genres und Zusammenfassung von den APIs abrufen
+            showModal('Genres und Zusammenfassung werden ermittelt...', true);
             try {
+                // Genres abrufen
                 const genres = await fetchGenresFromGemini(mediaData.title, selectedType);
                 mediaObject.genres = genres;
+                
+                // Zusammenfassung abrufen
+                const summary = await fetchSummaryFromWikipedia(mediaData.title);
+                mediaObject.summary = summary;
+
             } catch (error) {
-                // Bei einem Fehler einfach ohne Genres weitermachen
-                console.error("Fehler beim Abrufen der Genres:", error);
-                showModal('Fehler beim Abrufen der Genres. Fortfahren ohne Genres.', false);
+                console.error("Fehler beim Abrufen von Metadaten:", error);
+                showModal('Fehler beim Abrufen von Metadaten. Fortfahren ohne.', false);
                 await new Promise(resolve => setTimeout(resolve, 2000));
             } finally {
                 hideModal();
@@ -872,7 +938,7 @@
             detailsCover.onerror = () => detailsCover.src='https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover';
             detailsTitle.textContent = currentMediaItem.title;
             detailsGenres.textContent = currentMediaItem.genres.join(', ') || 'Keine Genres';
-            detailsDescription.textContent = 'Eine tolle Beschreibung für ' + currentMediaItem.title + '. (Dies ist ein Beispieltext, da keine Beschreibung vorhanden ist.)';
+            detailsSummary.textContent = currentMediaItem.summary || 'Leider konnte keine Zusammenfassung gefunden werden.';
 
             detailsPlayButton.classList.add('hidden');
             detailsContent.innerHTML = '';
