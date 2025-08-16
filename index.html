@@ -46,7 +46,7 @@
             width: 100%;
             height: 240px;
         }
-        .add-form, .video-player-view {
+        .add-form, .video-player-view, .media-details-view {
             transition: opacity 0.5s ease;
         }
         .message-modal {
@@ -112,6 +112,26 @@
         }
         .video-card:hover .title-overlay {
             opacity: 1;
+        }
+        .episode-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .episode-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .collapsible-header {
+            cursor: pointer;
+            user-select: none;
+        }
+        .episode-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .episode-list.expanded {
+            max-height: 500px; /* Anpassen nach Bedarf */
+            transition: max-height 0.3s ease-in;
         }
     </style>
 </head>
@@ -220,9 +240,31 @@
             </div>
         </div>
         
+        <!-- Video-Details-Ansicht (zunächst versteckt) -->
+        <div id="media-details-view" class="hidden container mx-auto mt-8">
+            <button id="back-to-gallery-btn-details" class="text-white text-3xl hover:text-gray-400 fixed top-4 left-4 z-50">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div id="details-header" class="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-10 p-4">
+                <img id="details-cover" class="w-full md:w-1/3 rounded-lg shadow-lg" src="" alt="Cover">
+                <div class="flex-1">
+                    <h2 id="details-title" class="text-4xl font-bold mb-2"></h2>
+                    <p id="details-genres" class="text-gray-400 text-lg mb-4"></p>
+                    <p id="details-description" class="text-gray-200 leading-relaxed mb-6">Beschreibungstext...</p>
+                    <button id="details-play-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full text-lg hidden">
+                        <i class="fas fa-play mr-2"></i>Wiedergabe starten
+                    </button>
+                </div>
+            </div>
+            
+            <div id="details-content" class="mt-8">
+                <!-- Episodenliste wird hier dynamisch eingefügt -->
+            </div>
+        </div>
+
         <!-- Video-Player-Ansicht (zunächst versteckt) -->
         <div id="video-player-view" class="hidden w-full h-full bg-black">
-            <button id="back-to-gallery-btn" class="fixed top-4 left-4 z-50 text-white text-3xl hover:text-gray-400">
+            <button id="back-to-details-btn" class="fixed top-4 left-4 z-50 text-white text-3xl hover:text-gray-400">
                 <i class="fas fa-arrow-left"></i>
             </button>
             <div id="video-info-overlay" class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-8">
@@ -259,6 +301,7 @@
         const mainContent = document.getElementById('main-content');
         const galleryView = document.getElementById('gallery-view');
         const addForm = document.getElementById('add-form');
+        const mediaDetailsView = document.getElementById('media-details-view');
         const videoPlayerView = document.getElementById('video-player-view');
         const addButton = document.getElementById('add-button');
         const addMovieBtn = document.getElementById('add-movie-btn');
@@ -272,7 +315,8 @@
         const seasonsContainer = document.getElementById('seasons-container');
         const addSeasonBtn = document.getElementById('add-season-btn');
         const cancelBtn = document.getElementById('cancel-btn');
-        const backBtn = document.getElementById('back-to-gallery-btn');
+        const backToGalleryBtnDetails = document.getElementById('back-to-gallery-btn-details');
+        const backToDetailsBtn = document.getElementById('back-to-details-btn');
         const videoContainer = document.getElementById('video-container');
         const playerVideo = document.getElementById('player-video');
         const playerTitle = document.getElementById('player-title');
@@ -289,6 +333,14 @@
         const recentlyWatchedContainer = document.getElementById('recently-watched-container');
         const recentlyWatchedSection = document.getElementById('recently-watched-section');
         const galleryTitle = document.getElementById('gallery-title');
+
+        // Details View Elemente
+        const detailsCover = document.getElementById('details-cover');
+        const detailsTitle = document.getElementById('details-title');
+        const detailsGenres = document.getElementById('details-genres');
+        const detailsDescription = document.getElementById('details-description');
+        const detailsPlayButton = document.getElementById('details-play-button');
+        const detailsContent = document.getElementById('details-content');
         
         // Player-spezifische Elemente
         const progressBar = document.getElementById('progress-bar');
@@ -296,48 +348,17 @@
         const totalDurationEl = document.getElementById('total-duration');
 
         // Globale Daten
-        let mediaItems = JSON.parse(localStorage.getItem('arkivum_media') || '[]');
+        let mediaItems = []; // Da wir File-Objekte nicht speichern können, starten wir immer leer.
         let recentlyWatched = JSON.parse(localStorage.getItem('arkivum_watched') || '[]');
         let selectedType = '';
         let mediaData = { title: '', coverFile: null, genres: [], files: [], seasons: [] };
         let currentPlaylist = [];
         let currentEpisodeIndex = 0;
         let draggedItem = null;
+        let currentMediaIndex = -1; // Index des aktuell angesehenen Mediums
+        let currentMediaItem = null; // Aktuelles Medienobjekt
 
         // Hilfsfunktionen zum Speichern der Daten im lokalen Speicher
-        function saveMediaItems() {
-            // Speichere nur URLs statt ganzer File-Objekte
-            const itemsToSave = mediaItems.map(item => {
-                const serializableItem = { ...item };
-                if (serializableItem.type === 'film') {
-                    delete serializableItem.file;
-                } else if (serializableItem.type === 'serie') {
-                    serializableItem.seasons.forEach(season => {
-                        season.files.forEach(fileItem => {
-                            delete fileItem.file;
-                        });
-                    });
-                }
-                if (serializableItem.coverFile) {
-                    delete serializableItem.coverFile;
-                }
-                return serializableItem;
-            });
-            localStorage.setItem('arkivum_media', JSON.stringify(itemsToSave));
-        }
-        
-        // Da wir keine File-Objekte direkt speichern können, verwenden wir URL.createObjectURL.
-        // Die gespeicherten URLs sind jedoch nach dem Neuladen der Seite ungültig.
-        // Um das zu beheben, speichern wir die Datei selbst nicht, sondern nur die Metadaten.
-        // Die Dateien müssen bei jedem Neuladen neu hochgeladen werden, oder wir müssen
-        // eine serverseitige Lösung verwenden, die hier aber nicht möglich ist.
-        // Daher setzen wir mediaItems bei jedem Start auf einen leeren Array.
-        // Da die Anforderung "selbst hochladen" lautet, ist dies der beste Weg,
-        // um dies in einem lokalen Browser-Speicher zu simulieren, ohne die Dateien
-        // dauerhaft zu speichern.
-        mediaItems = [];
-        localStorage.removeItem('arkivum_media');
-
         function saveRecentlyWatched() {
             localStorage.setItem('arkivum_watched', JSON.stringify(recentlyWatched));
         }
@@ -346,6 +367,7 @@
         function showView(viewId) {
             galleryView.classList.add('hidden');
             addForm.classList.add('hidden');
+            mediaDetailsView.classList.add('hidden');
             videoPlayerView.classList.add('hidden');
             document.getElementById(viewId).classList.remove('hidden');
         }
@@ -439,10 +461,14 @@
             showView('gallery-view');
         });
 
-        backBtn.addEventListener('click', () => {
+        backToGalleryBtnDetails.addEventListener('click', () => {
+            showView('gallery-view');
+        });
+        
+        backToDetailsBtn.addEventListener('click', () => {
             playerVideo.pause();
             playerVideo.src = '';
-            showView('gallery-view');
+            showDetails(currentMediaIndex);
         });
 
         coverInput.addEventListener('change', (event) => {
@@ -627,7 +653,7 @@
                 coverUrl: URL.createObjectURL(mediaData.coverFile),
                 genres: [],
                 isFavorite: false,
-                playbackPosition: 0
+                playbackData: { seasonIndex: 0, episodeIndex: 0, position: 0 }
             };
             
             if (selectedType === 'film') {
@@ -713,12 +739,25 @@
                     card.className = 'video-card rounded-lg overflow-hidden bg-gray-800 shadow-xl';
                     
                     let totalDuration = 0;
+                    let currentPosition = watchedItem.playbackData.position;
                     if(item.type === 'film') {
                         totalDuration = item.duration;
                     } else {
-                        totalDuration = item.seasons.flatMap(s => s.files).reduce((sum, f) => sum + f.duration, 0);
+                        // Bei einer Serie die Gesamtdauer bis zur aktuellen Episode berechnen
+                        let cumulativeDuration = 0;
+                        let episodeFound = false;
+                        for(let sIndex = 0; sIndex < item.seasons.length; sIndex++) {
+                            for(let eIndex = 0; eIndex < item.seasons[sIndex].files.length; eIndex++) {
+                                if(sIndex === watchedItem.playbackData.seasonIndex && eIndex === watchedItem.playbackData.episodeIndex) {
+                                    totalDuration = item.seasons[sIndex].files[eIndex].duration;
+                                    episodeFound = true;
+                                    break;
+                                }
+                            }
+                            if (episodeFound) break;
+                        }
                     }
-                    const progressPercentage = (watchedItem.playbackPosition / totalDuration) * 100;
+                    const progressPercentage = (currentPosition / totalDuration) * 100;
 
                     card.innerHTML = `
                         <div class="cover-placeholder bg-gray-700 relative">
@@ -733,7 +772,7 @@
                     `;
                     card.addEventListener('click', () => {
                         const originalIndex = mediaItems.findIndex(media => media.title === item.title);
-                        openPlayer(originalIndex, watchedItem.playbackPosition);
+                        showDetails(originalIndex);
                     });
                     recentlyWatchedContainer.appendChild(card);
                 }
@@ -770,7 +809,7 @@
                 `;
                 card.addEventListener('click', (e) => {
                     if (!e.target.closest('.delete-btn') && !e.target.closest('.favorite-btn')) {
-                        openPlayer(originalIndex);
+                        showDetails(originalIndex);
                     }
                 });
                 videoContainer.appendChild(card);
@@ -779,8 +818,11 @@
 
         // Funktion zum Löschen eines Elements
         function deleteMediaItem(index) {
+            const titleToDelete = mediaItems[index].title;
             mediaItems.splice(index, 1);
-            saveMediaItems();
+            // Auch aus den zuletzt gesehenen entfernen
+            recentlyWatched = recentlyWatched.filter(item => item.title !== titleToDelete);
+            saveRecentlyWatched();
             renderAllViews();
         }
         
@@ -811,62 +853,164 @@
             if (favoriteBtn) {
                 const index = favoriteBtn.dataset.index;
                 mediaItems[index].isFavorite = !mediaItems[index].isFavorite;
-                saveMediaItems();
+                saveRecentlyWatched(); // Einfach nur um die Liste zu aktualisieren
                 renderAllViews();
             }
         });
 
+        // Details-Ansicht anzeigen
+        function showDetails(mediaIndex) {
+            currentMediaIndex = mediaIndex;
+            currentMediaItem = mediaItems[mediaIndex];
+            
+            if (!currentMediaItem) {
+                showView('gallery-view');
+                return;
+            }
+
+            detailsCover.src = currentMediaItem.coverUrl;
+            detailsCover.onerror = () => detailsCover.src='https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover';
+            detailsTitle.textContent = currentMediaItem.title;
+            detailsGenres.textContent = currentMediaItem.genres.join(', ') || 'Keine Genres';
+            detailsDescription.textContent = 'Eine tolle Beschreibung für ' + currentMediaItem.title + '. (Dies ist ein Beispieltext, da keine Beschreibung vorhanden ist.)';
+
+            detailsPlayButton.classList.add('hidden');
+            detailsContent.innerHTML = '';
+            
+            const lastPlayed = recentlyWatched.find(item => item.title === currentMediaItem.title)?.playbackData;
+
+            if (currentMediaItem.type === 'film') {
+                detailsPlayButton.classList.remove('hidden');
+                detailsPlayButton.onclick = () => {
+                    const startPosition = lastPlayed?.position || 0;
+                    openPlayer(currentMediaIndex, { seasonIndex: 0, episodeIndex: 0, position: startPosition });
+                };
+            } else if (currentMediaItem.type === 'serie') {
+                detailsPlayButton.classList.add('hidden');
+                currentMediaItem.seasons.forEach((season, sIndex) => {
+                    const seasonDiv = document.createElement('div');
+                    seasonDiv.className = 'mb-4';
+                    seasonDiv.innerHTML = `
+                        <h3 class="collapsible-header text-2xl font-semibold mb-2 p-2 rounded-lg bg-gray-800 flex justify-between items-center">
+                            ${season.name} <i class="fas fa-chevron-down"></i>
+                        </h3>
+                        <div class="episode-list space-y-2 pl-4"></div>
+                    `;
+                    const listContainer = seasonDiv.querySelector('.episode-list');
+                    const header = seasonDiv.querySelector('.collapsible-header');
+
+                    // Setze die erste Staffel standardmäßig auf 'geöffnet'
+                    if (sIndex === 0) {
+                        listContainer.classList.add('expanded');
+                        header.querySelector('i').classList.add('rotate-180');
+                    }
+                    
+                    header.addEventListener('click', () => {
+                        listContainer.classList.toggle('expanded');
+                        header.querySelector('i').classList.toggle('rotate-180');
+                    });
+                    
+                    season.files.forEach((fileItem, eIndex) => {
+                        const episodeItem = document.createElement('div');
+                        episodeItem.className = 'episode-item p-2 rounded-lg bg-gray-700 flex justify-between items-center';
+                        const isLastPlayed = lastPlayed && lastPlayed.seasonIndex === sIndex && lastPlayed.episodeIndex === eIndex;
+                        if (isLastPlayed) {
+                             episodeItem.classList.add('bg-red-800');
+                             episodeItem.innerHTML = `<span class="truncate">${eIndex + 1}. ${fileItem.file.name} (Zuletzt gesehen)</span><i class="fas fa-play"></i>`;
+                        } else {
+                            episodeItem.innerHTML = `<span class="truncate">${eIndex + 1}. ${fileItem.file.name}</span><i class="fas fa-play"></i>`;
+                        }
+                        
+                        episodeItem.onclick = () => {
+                            const startPosition = (isLastPlayed) ? lastPlayed.position : 0;
+                            openPlayer(currentMediaIndex, { seasonIndex: sIndex, episodeIndex: eIndex, position: startPosition });
+                        };
+                        listContainer.appendChild(episodeItem);
+                    });
+                    detailsContent.appendChild(seasonDiv);
+                });
+            }
+            showView('media-details-view');
+        }
 
         // Player-Ansicht öffnen und Videos abspielen
-        function openPlayer(mediaIndex, startTime = 0) {
-            const item = mediaItems[mediaIndex];
-            playerTitle.textContent = item.title;
+        function openPlayer(mediaIndex, startInfo) {
+            currentMediaIndex = mediaIndex;
+            currentMediaItem = mediaItems[mediaIndex];
+            playerTitle.textContent = currentMediaItem.title;
 
-            // Zuletzt gesehen aktualisieren
-            const existingWatched = recentlyWatched.find(i => i.title === item.title);
-            if (existingWatched) {
-                recentlyWatched = recentlyWatched.filter(i => i.title !== item.title);
-            }
-            recentlyWatched.unshift({ title: item.title, playbackPosition: startTime, type: item.type });
-            saveRecentlyWatched();
-            
-            if (item.type === 'film') {
-                currentPlaylist = [{ file: item.file }];
+            if (currentMediaItem.type === 'film') {
+                currentPlaylist = [{ file: currentMediaItem.file, duration: currentMediaItem.duration }];
                 currentEpisodeIndex = 0;
                 playerSubtitle.textContent = ``;
-                playCurrentEpisode(startTime);
-            } else if (item.type === 'serie') {
-                currentPlaylist = item.seasons.flatMap(s => s.files);
-                currentEpisodeIndex = 0;
-                // Finde die richtige Episode basierend auf der gespeicherten Position
-                const totalDuration = currentPlaylist.reduce((sum, f) => sum + f.duration, 0);
-                
-                let cumulativeDuration = 0;
-                for(let i = 0; i < currentPlaylist.length; i++) {
-                    const episodeDuration = currentPlaylist[i].duration;
-                    if(startTime < cumulativeDuration + episodeDuration) {
-                        currentEpisodeIndex = i;
-                        const episodeStartTime = startTime - cumulativeDuration;
-                        playCurrentEpisode(episodeStartTime);
-                        break;
+                playCurrentEpisode(startInfo.position);
+            } else if (currentMediaItem.type === 'serie') {
+                currentPlaylist = [];
+                currentMediaItem.seasons.forEach(season => {
+                    currentPlaylist = currentPlaylist.concat(season.files);
+                });
+                // Finde den globalen Index
+                let globalIndex = 0;
+                let found = false;
+                for (let sIndex = 0; sIndex < currentMediaItem.seasons.length; sIndex++) {
+                    for (let eIndex = 0; eIndex < currentMediaItem.seasons[sIndex].files.length; eIndex++) {
+                        if (sIndex === startInfo.seasonIndex && eIndex === startInfo.episodeIndex) {
+                            currentEpisodeIndex = globalIndex;
+                            found = true;
+                            break;
+                        }
+                        globalIndex++;
                     }
-                    cumulativeDuration += episodeDuration;
+                    if (found) break;
                 }
+                playCurrentEpisode(startInfo.position);
             }
             showView('video-player-view');
         }
 
         // Speichert den Wiedergabefortschritt und aktualisiert den Fortschrittsbalken
         playerVideo.addEventListener('timeupdate', () => {
-            const item = mediaItems.find(media => media.title === playerTitle.textContent);
-            if (item) {
-                const watchedItem = recentlyWatched.find(i => i.title === item.title);
-                if (watchedItem) {
-                    watchedItem.playbackPosition = playerVideo.currentTime;
-                    saveRecentlyWatched();
+            const watchedItem = recentlyWatched.find(i => i.title === currentMediaItem.title);
+            let totalEpisodeCount = 0;
+            let currentSeasonIndex = 0;
+            let currentEpisodeIndexInSeason = 0;
+            if (currentMediaItem.type === 'serie') {
+                 // Finde die aktuelle Staffel und Episodennummer
+                let cumulativeEpisodes = 0;
+                for (let sIndex = 0; sIndex < currentMediaItem.seasons.length; sIndex++) {
+                    const season = currentMediaItem.seasons[sIndex];
+                    if (cumulativeEpisodes + season.files.length > currentEpisodeIndex) {
+                        currentSeasonIndex = sIndex;
+                        currentEpisodeIndexInSeason = currentEpisodeIndex - cumulativeEpisodes;
+                        break;
+                    }
+                    cumulativeEpisodes += season.files.length;
                 }
             }
 
+            if (watchedItem) {
+                watchedItem.playbackData = {
+                    seasonIndex: currentSeasonIndex,
+                    episodeIndex: currentEpisodeIndexInSeason,
+                    position: playerVideo.currentTime
+                };
+            } else {
+                recentlyWatched.unshift({ 
+                    title: currentMediaItem.title, 
+                    playbackData: { 
+                        seasonIndex: currentSeasonIndex, 
+                        episodeIndex: currentEpisodeIndexInSeason, 
+                        position: playerVideo.currentTime 
+                    }, 
+                    type: currentMediaItem.type 
+                });
+                // Halte die Liste auf eine vernünftige Größe
+                if (recentlyWatched.length > 20) {
+                    recentlyWatched.pop();
+                }
+            }
+            saveRecentlyWatched();
+            
             const totalDuration = playerVideo.duration;
             const currentTime = playerVideo.currentTime;
             const progressPercentage = (currentTime / totalDuration) * 100;
@@ -925,7 +1069,7 @@
                 };
             } else {
                 showModal('Ende der Wiedergabeliste erreicht.', false);
-                backBtn.click();
+                backToDetailsBtn.click();
             }
         }
         
