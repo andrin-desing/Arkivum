@@ -271,10 +271,11 @@
             const seasonDiv = document.createElement('div');
             seasonDiv.id = `season-${seasonIndex}`;
             seasonDiv.className = 'p-4 bg-gray-700 rounded-lg';
+            // Fester Fehler: Der Drag-and-Drop-Container brauchte einen eindeutigen Klassen-Namen
             seasonDiv.innerHTML = `
                 <h4 class="font-bold mb-2">Staffel ${seasonIndex}</h4>
                 <p class="text-sm text-gray-400 mb-2">Dateien hierher ziehen, um die Reihenfolge zu ändern.</p>
-                <div class="space-y-2" data-season-index="${seasonIndex}"></div>
+                <div class="space-y-2 episode-list-container" data-season-index="${seasonIndex}"></div>
             `;
             seasonsContainer.appendChild(seasonDiv);
             mediaData.seasons.push({ name: `Staffel ${seasonIndex}`, files: [] });
@@ -323,6 +324,7 @@
             }
         });
 
+        // Korrigierter Drag-Over-Event-Handler, um den richtigen Container zu finden
         seasonsContainer.addEventListener('dragover', (e) => {
             e.preventDefault();
             const target = e.target.closest('.episode-list-container');
@@ -420,6 +422,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP-Fehler: ${response.status}`);
+                }
+
                 const result = await response.json();
                 
                 if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
@@ -428,12 +435,17 @@
                     hideModal();
                     return parsedData.genres;
                 } else {
-                    showModal('Fehler beim Abrufen der Genres.');
+                    showModal('Fehler beim Abrufen der Genres: Unerwartete Antwortstruktur.');
                     return [];
                 }
             } catch (error) {
                 console.error("API-Fehler:", error);
-                showModal('Fehler beim Abrufen der Genres.');
+                // Zusätzliche Fehlerbehandlung für JSON-Parsing
+                if (error instanceof SyntaxError) {
+                    showModal('Fehler beim Abrufen der Genres: Ungültiges JSON in der Antwort.');
+                } else {
+                    showModal(`Fehler beim Abrufen der Genres: ${error.message}`);
+                }
                 return [];
             }
         }
