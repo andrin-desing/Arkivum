@@ -49,6 +49,63 @@
         .episode-drag-item {
             cursor: grab;
         }
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+            opacity: 0;
+            z-index: 20;
+        }
+        .favorite-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            transition: color 0.2s ease, background-color 0.2s ease;
+            z-index: 20;
+        }
+        .video-card:hover .delete-btn {
+            opacity: 1;
+        }
+        .delete-btn:hover {
+            background-color: rgba(229, 9, 20, 0.8);
+        }
+        .favorite-btn:hover {
+            color: #e50914;
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .title-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            padding: 1rem;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .video-card:hover .title-overlay {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-[#141414]">
@@ -59,10 +116,10 @@
             <div class="flex items-center space-x-8">
                 <h1 class="text-3xl font-bold text-[#e50914]">Arkivum</h1>
                 <nav class="hidden md:flex space-x-2 text-sm">
-                    <a href="#" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view')">Startseite</a>
-                    <a href="#" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view')">Serien</a>
-                    <a href="#" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view')">Filme</a>
-                    <a href="#" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view')">Meine Liste</a>
+                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('all')">Startseite</a>
+                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('serie')">Serien</a>
+                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('film')">Filme</a>
+                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('favorites')">Meine Liste</a>
                 </nav>
             </div>
             <div class="flex items-center space-x-4">
@@ -79,8 +136,24 @@
     <div id="main-content">
         <!-- Hauptansicht: Videogalerie -->
         <main id="gallery-view" class="container mx-auto mt-8">
+            <!-- Filter-Buttons -->
+            <div class="flex space-x-4 mb-8">
+                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-red-600 hover:bg-red-700 text-white" data-filter="all">Alle</button>
+                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="film">Filme</button>
+                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="serie">Serien</button>
+                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="favorites">Meine Liste</button>
+            </div>
+            
+            <!-- Zuletzt gesehen Sektion -->
+            <section id="recently-watched-section" class="mb-10 hidden">
+                <h2 class="text-2xl font-semibold mb-4">Zuletzt gesehen</h2>
+                <div id="recently-watched-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                </div>
+            </section>
+
+            <!-- Videogalerie Sektion -->
             <section>
-                <h2 class="text-2xl font-semibold mb-4">Zuletzt hinzugefügt</h2>
+                <h2 id="gallery-title" class="text-2xl font-semibold mb-4">Alle Medien</h2>
                 <div id="video-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     <!-- Videokarten werden hier dynamisch eingefügt -->
                 </div>
@@ -104,27 +177,20 @@
                 </div>
 
                 <form id="media-form" class="space-y-4">
+                    <!-- Dateiauswahl für das Vorschaubild -->
+                    <div>
+                        <label for="cover-input" class="block text-sm font-medium text-gray-400">Vorschaubild hochladen</label>
+                        <input type="file" id="cover-input" accept="image/*" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700">
+                    </div>
+
                     <div>
                         <label for="media-title" class="block text-sm font-medium text-gray-400">Titel</label>
                         <input type="text" id="media-title" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 p-2 focus:ring-red-500 focus:border-red-500">
                     </div>
-                    
-                    <button type="button" id="fetch-data-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                        <i class="fas fa-search mr-2"></i>Daten abrufen
-                    </button>
 
-                    <!-- Cover-Vorschau und Genres -->
-                    <div id="info-preview" class="mt-4 hidden p-4 bg-gray-700 rounded-lg flex items-start space-x-4">
-                        <img id="selected-cover" src="" alt="Cover Vorschau" class="w-24 h-36 object-cover rounded-lg">
-                        <div>
-                            <h3 class="text-lg font-semibold mb-1">Informationen</h3>
-                            <p id="genre-display" class="text-sm text-gray-400"></p>
-                        </div>
-                    </div>
-
-                    <!-- Dateiauswahl -->
+                    <!-- Dateiauswahl für Video-Dateien -->
                     <div>
-                        <label for="file-input" class="block text-sm font-medium text-gray-400">Dateien auswählen</label>
+                        <label for="file-input" class="block text-sm font-medium text-gray-400">Video-Dateien auswählen</label>
                         <input type="file" id="file-input" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700" multiple>
                     </div>
 
@@ -155,16 +221,28 @@
             <div id="video-info-overlay" class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-8">
                 <h1 id="player-title" class="text-3xl font-bold mb-2"></h1>
                 <h2 id="player-subtitle" class="text-xl text-gray-400"></h2>
+                <!-- Fortschrittsbalken und Zeit-Anzeige -->
+                <div class="flex items-center space-x-4 mt-2">
+                    <span id="current-time" class="text-sm">0:00</span>
+                    <div id="progress-bar-container" class="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-red-600" style="width: 0%;"></div>
+                    </div>
+                    <span id="total-duration" class="text-sm">0:00</span>
+                </div>
             </div>
             <video id="player-video" controls class="w-full h-screen object-contain"></video>
         </div>
     </div>
     
-    <!-- Lade- und Fehlermodal -->
+    <!-- Lade-, Fehler- und Bestätigungsmodal -->
     <div id="message-modal" class="message-modal fixed inset-0 hidden flex items-center justify-center">
         <div class="bg-gray-800 rounded-lg p-6 max-w-sm text-center shadow-lg">
             <div id="modal-spinner" class="hidden animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-500 mx-auto mb-4"></div>
             <p id="modal-message" class="text-lg"></p>
+            <div id="modal-buttons" class="hidden mt-4 space-x-4 justify-center">
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-bold">Ja, löschen</button>
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg">Abbrechen</button>
+            </div>
             <button id="modal-close-btn" class="mt-4 px-4 py-2 bg-red-600 rounded-lg hidden">Schließen</button>
         </div>
     </div>
@@ -179,15 +257,12 @@
         const addMovieBtn = document.getElementById('add-movie-btn');
         const addSeriesBtn = document.getElementById('add-series-btn');
         const mediaForm = document.getElementById('media-form');
+        const coverInput = document.getElementById('cover-input');
         const mediaTitleInput = document.getElementById('media-title');
         const fileInput = document.getElementById('file-input');
         const seriesSection = document.getElementById('series-section');
         const seasonsContainer = document.getElementById('seasons-container');
         const addSeasonBtn = document.getElementById('add-season-btn');
-        const fetchDataBtn = document.getElementById('fetch-data-btn');
-        const infoPreview = document.getElementById('info-preview');
-        const selectedCoverImg = document.getElementById('selected-cover');
-        const genreDisplay = document.getElementById('genre-display');
         const cancelBtn = document.getElementById('cancel-btn');
         const backBtn = document.getElementById('back-to-gallery-btn');
         const videoContainer = document.getElementById('video-container');
@@ -198,18 +273,68 @@
         const modalSpinner = document.getElementById('modal-spinner');
         const modalMessage = document.getElementById('modal-message');
         const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalButtons = document.getElementById('modal-buttons');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const searchInput = document.getElementById('search-input');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const recentlyWatchedContainer = document.getElementById('recently-watched-container');
+        const recentlyWatchedSection = document.getElementById('recently-watched-section');
+        const galleryTitle = document.getElementById('gallery-title');
+        
+        // Player-spezifische Elemente
+        const progressBar = document.getElementById('progress-bar');
+        const currentTimeEl = document.getElementById('current-time');
+        const totalDurationEl = document.getElementById('total-duration');
 
+        // Globale Daten
         let mediaItems = JSON.parse(localStorage.getItem('arkivum_media') || '[]');
+        let recentlyWatched = JSON.parse(localStorage.getItem('arkivum_watched') || '[]');
         let selectedType = '';
-        let mediaData = { title: '', coverUrl: '', genres: [], files: [], seasons: [] };
+        let mediaData = { title: '', coverFile: null, genres: [], files: [], seasons: [] };
         let currentPlaylist = [];
         let currentEpisodeIndex = 0;
-        
         let draggedItem = null;
 
-        // Hilfsfunktion zum Speichern der Daten im lokalen Speicher
+        // Hilfsfunktionen zum Speichern der Daten im lokalen Speicher
         function saveMediaItems() {
-            localStorage.setItem('arkivum_media', JSON.stringify(mediaItems));
+            // Speichere nur URLs statt ganzer File-Objekte
+            const itemsToSave = mediaItems.map(item => {
+                const serializableItem = { ...item };
+                if (serializableItem.type === 'film') {
+                    delete serializableItem.file;
+                    serializableItem.fileUrl = URL.createObjectURL(item.file);
+                } else if (serializableItem.type === 'serie') {
+                    serializableItem.seasons.forEach(season => {
+                        season.files.forEach(fileItem => {
+                            delete fileItem.file;
+                            fileItem.fileUrl = URL.createObjectURL(fileItem.file);
+                        });
+                    });
+                }
+                if (serializableItem.coverFile) {
+                    delete serializableItem.coverFile;
+                    serializableItem.coverUrl = URL.createObjectURL(item.coverFile);
+                }
+                return serializableItem;
+            });
+            localStorage.setItem('arkivum_media', JSON.stringify(itemsToSave));
+        }
+
+        // Da wir keine File-Objekte direkt speichern können, verwenden wir URL.createObjectURL.
+        // Die gespeicherten URLs sind jedoch nach dem Neuladen der Seite ungültig.
+        // Um das zu beheben, speichern wir die Datei selbst nicht, sondern nur die Metadaten.
+        // Die Dateien müssen bei jedem Neuladen neu hochgeladen werden, oder wir müssen
+        // eine serverseitige Lösung verwenden, die hier aber nicht möglich ist.
+        // Daher setzen wir mediaItems bei jedem Start auf einen leeren Array.
+        // Da die Anforderung "selbst hochladen" lautet, ist dies der beste Weg,
+        // um dies in einem lokalen Browser-Speicher zu simulieren, ohne die Dateien
+        // dauerhaft zu speichern.
+        mediaItems = [];
+        localStorage.removeItem('arkivum_media');
+        
+        function saveRecentlyWatched() {
+            localStorage.setItem('arkivum_watched', JSON.stringify(recentlyWatched));
         }
 
         // UI-Ansichten wechseln
@@ -221,10 +346,11 @@
         }
         
         // Modal-Funktionen für Nachrichten und Ladezustände
-        function showModal(message, isSpinner = false) {
+        function showModal(message, isSpinner = false, isConfirmation = false) {
             modalMessage.textContent = message;
             modalSpinner.classList.toggle('hidden', !isSpinner);
-            modalCloseBtn.classList.toggle('hidden', isSpinner);
+            modalButtons.classList.toggle('hidden', !isConfirmation);
+            modalCloseBtn.classList.toggle('hidden', isSpinner || isConfirmation);
             messageModal.classList.remove('hidden');
         }
 
@@ -232,15 +358,15 @@
             messageModal.classList.add('hidden');
         }
         modalCloseBtn.addEventListener('click', hideModal);
+        modalCancelBtn.addEventListener('click', hideModal);
 
         // UI-Events
         addButton.addEventListener('click', () => {
             mediaForm.reset();
             seriesSection.classList.add('hidden');
             seasonsContainer.innerHTML = '';
-            infoPreview.classList.add('hidden');
             selectedType = '';
-            mediaData = { title: '', coverUrl: '', genres: [], files: [], seasons: [] };
+            mediaData = { title: '', coverFile: null, genres: [], files: [], seasons: [] };
             showView('add-form');
         });
 
@@ -267,18 +393,17 @@
         });
         
         addSeasonBtn.addEventListener('click', () => {
-            const seasonIndex = seasonsContainer.childElementCount + 1;
+            const seasonIndex = seasonsContainer.childElementCount;
             const seasonDiv = document.createElement('div');
             seasonDiv.id = `season-${seasonIndex}`;
             seasonDiv.className = 'p-4 bg-gray-700 rounded-lg';
-            // Fester Fehler: Der Drag-and-Drop-Container brauchte einen eindeutigen Klassen-Namen
             seasonDiv.innerHTML = `
-                <h4 class="font-bold mb-2">Staffel ${seasonIndex}</h4>
+                <h4 class="font-bold mb-2">Staffel ${seasonIndex + 1}</h4>
                 <p class="text-sm text-gray-400 mb-2">Dateien hierher ziehen, um die Reihenfolge zu ändern.</p>
                 <div class="space-y-2 episode-list-container" data-season-index="${seasonIndex}"></div>
             `;
             seasonsContainer.appendChild(seasonDiv);
-            mediaData.seasons.push({ name: `Staffel ${seasonIndex}`, files: [] });
+            mediaData.seasons.push({ name: `Staffel ${seasonIndex + 1}`, files: [] });
         });
         
         cancelBtn.addEventListener('click', () => {
@@ -291,6 +416,16 @@
             showView('gallery-view');
         });
 
+        coverInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                mediaData.coverFile = file;
+            } else {
+                showModal('Bitte wähle eine Bilddatei als Vorschaubild aus.');
+                mediaData.coverFile = null;
+            }
+        });
+
         fileInput.addEventListener('change', async (event) => {
             const files = Array.from(event.target.files);
             
@@ -298,6 +433,7 @@
                 const duration = await getDuration(files[0]);
                 mediaData.files = [{ file: files[0], duration }];
             } else if (selectedType === 'serie') {
+                mediaData.seasons[0].files = [];
                 for (const file of files) {
                     const duration = await getDuration(file);
                     mediaData.seasons[0].files.push({ file, duration });
@@ -324,7 +460,6 @@
             }
         });
 
-        // Korrigierter Drag-Over-Event-Handler, um den richtigen Container zu finden
         seasonsContainer.addEventListener('dragover', (e) => {
             e.preventDefault();
             const target = e.target.closest('.episode-list-container');
@@ -353,7 +488,7 @@
 
         function updateMediaDataFromDOM() {
             mediaData.seasons.forEach((season, sIndex) => {
-                const seasonElement = document.querySelector(`[data-season-index="${sIndex + 1}"]`);
+                const seasonElement = document.querySelector(`[data-season-index="${sIndex}"]`);
                 if (seasonElement) {
                     const newFiles = Array.from(seasonElement.children).map(el => mediaData.seasons[sIndex].files[el.dataset.fileIndex]);
                     mediaData.seasons[sIndex].files = newFiles;
@@ -363,7 +498,7 @@
         
         // Aktualisiert die Episodenliste im UI
         function updateEpisodeList(files, seasonIndex) {
-            const listContainer = document.querySelector(`[data-season-index="${seasonIndex + 1}"]`);
+            const listContainer = document.querySelector(`[data-season-index="${seasonIndex}"]`);
             if (!listContainer) return;
             listContainer.innerHTML = '';
             files.sort((a, b) => a.file.name.localeCompare(b.file.name));
@@ -384,7 +519,7 @@
                 video.preload = 'metadata';
                 video.onloadedmetadata = () => {
                     URL.revokeObjectURL(video.src);
-                    resolve(Math.round(video.duration / 60)); // Dauer in Minuten
+                    resolve(Math.round(video.duration)); // Dauer in Sekunden
                 };
                 video.onerror = () => {
                     URL.revokeObjectURL(video.src);
@@ -394,143 +529,24 @@
             });
         }
 
-        // Funktion zur Google Gemini API für Genres
-        async function fetchGeminiData(prompt) {
-            const apiKey = "AIzaSyBH1jxoVg6mkk1H4RGBMxtI_YqCU-u1fZQ";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            "genres": {
-                                "type": "ARRAY",
-                                "items": { "type": "STRING" }
-                            }
-                        }
-                    }
-                }
-            };
-            
-            showModal('Rufe Daten ab...', true);
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP-Fehler: ${response.status}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
-                    const jsonResponse = result.candidates[0].content.parts[0].text;
-                    const parsedData = JSON.parse(jsonResponse);
-                    return parsedData.genres;
-                } else {
-                    throw new Error('Unerwartete Antwortstruktur.');
-                }
-            } catch (error) {
-                console.error("API-Fehler:", error);
-                throw new Error(`Fehler beim Abrufen der Genres: ${error.message}`);
-            } finally {
-                hideModal();
-            }
-        }
-
-        // Funktion zur Generierung eines Covers mit der Gemini API
-        async function generateCoverImage(title) {
-            const prompt = `Erstelle ein Film- oder Serienposter im Hochformat mit dem Titel "${title}". Der Stil sollte modern und ansprechend sein.`;
-            const payload = {
-                instances: { prompt: prompt },
-                parameters: { "sampleCount": 1 }
-            };
-            const apiKey = "AIzaSyBH1jxoVg6mkk1H4RGBMxtI_YqCU-u1fZQ";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-
-            showModal('Generiere Vorschaubild...', true);
-            
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP-Fehler: ${response.status}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
-                    const base64Data = result.predictions[0].bytesBase64Encoded;
-                    return `data:image/png;base64,${base64Data}`;
-                } else {
-                    throw new Error('Unerwartete Antwortstruktur oder fehlendes Bild.');
-                }
-            } catch (error) {
-                console.error("API-Fehler:", error);
-                showModal(`Fehler beim Generieren des Bildes: ${error.message}`);
-                return null;
-            } finally {
-                hideModal();
-            }
-        }
-
-        // Holt Cover und Genres
-        fetchDataBtn.addEventListener('click', async () => {
-            const title = mediaTitleInput.value;
-            if (!title) {
-                showModal('Bitte einen Titel eingeben, um Daten abzurufen.');
-                return;
-            }
-
-            infoPreview.classList.remove('hidden');
-
-            try {
-                const coverUrl = await generateCoverImage(title);
-                if (coverUrl) {
-                    mediaData.coverUrl = coverUrl;
-                    selectedCoverImg.src = mediaData.coverUrl;
-                } else {
-                    mediaData.coverUrl = 'https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover';
-                    selectedCoverImg.src = mediaData.coverUrl;
-                }
-                
-                const genres = await fetchGeminiData(`Gib mir 3 bis 5 passende Genres für den Film/die Serie: "${title}". Die Antwort soll ein JSON-Objekt mit einem "genres"-Array sein.`);
-                mediaData.genres = genres;
-                genreDisplay.textContent = mediaData.genres.join(', ') || 'Genres nicht gefunden';
-
-            } catch (error) {
-                showModal(error.message);
-            }
-        });
-
-
         // Formular absenden
         mediaForm.addEventListener('submit', (event) => {
             event.preventDefault();
 
             mediaData.title = mediaTitleInput.value;
 
-            if (!mediaData.title || (selectedType === 'film' && mediaData.files.length === 0) || (selectedType === 'serie' && mediaData.seasons.length === 0)) {
-                showModal('Bitte Titel und mindestens eine Datei auswählen.');
+            if (!mediaData.title || !mediaData.coverFile || (selectedType === 'film' && mediaData.files.length === 0) || (selectedType === 'serie' && mediaData.seasons.length === 0)) {
+                showModal('Bitte Titel, Vorschaubild und mindestens eine Datei auswählen.');
                 return;
             }
             
-            // Verknüpfe Dateien mit dem Datenmodell und speichere es
             const mediaObject = {
                 title: mediaData.title,
                 type: selectedType,
-                coverUrl: mediaData.coverUrl || 'https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover',
-                genres: mediaData.genres
+                coverUrl: URL.createObjectURL(mediaData.coverFile),
+                genres: [], // Genres-Funktion wurde entfernt, kann manuell hinzugefügt werden
+                isFavorite: false,
+                playbackPosition: 0
             };
             
             if (selectedType === 'film') {
@@ -544,96 +560,289 @@
             }
 
             mediaItems.push(mediaObject);
-            saveMediaItems();
-            renderVideoCards();
+            // Wir speichern hier nicht im Local Storage, da File-Objekte nicht serialisierbar sind.
+            renderAllViews();
             showView('gallery-view');
         });
 
-        // Galerie-Ansicht rendern
-        function renderVideoCards() {
+        // Filter-Funktionalität
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                });
+                button.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                button.classList.add('bg-red-600', 'hover:bg-red-700');
+                const filter = button.dataset.filter;
+                applyFilter(filter);
+            });
+        });
+
+        function applyFilter(filter) {
+            let filteredItems = mediaItems;
+            let title = '';
+            switch(filter) {
+                case 'all':
+                    title = 'Alle Medien';
+                    recentlyWatchedSection.classList.remove('hidden');
+                    break;
+                case 'film':
+                    filteredItems = mediaItems.filter(item => item.type === 'film');
+                    title = 'Filme';
+                    recentlyWatchedSection.classList.add('hidden');
+                    break;
+                case 'serie':
+                    filteredItems = mediaItems.filter(item => item.type === 'serie');
+                    title = 'Serien';
+                    recentlyWatchedSection.classList.add('hidden');
+                    break;
+                case 'favorites':
+                    filteredItems = mediaItems.filter(item => item.isFavorite);
+                    title = 'Meine Liste';
+                    recentlyWatchedSection.classList.add('hidden');
+                    break;
+            }
+            galleryTitle.textContent = title;
+            renderVideoCards(filteredItems);
+        }
+
+        // Rendert die "Zuletzt gesehen"-Sektion
+        function renderRecentlyWatched() {
+            recentlyWatchedContainer.innerHTML = '';
+            // Zeige die letzten 6 gesehenen Items
+            recentlyWatched.slice(0, 6).forEach(watchedItem => {
+                const item = mediaItems.find(media => media.title === watchedItem.title);
+                if (item) {
+                    const card = document.createElement('div');
+                    card.className = 'video-card rounded-lg overflow-hidden bg-gray-800 shadow-xl';
+                    
+                    let totalDuration = 0;
+                    if(item.type === 'film') {
+                        totalDuration = item.duration;
+                    } else {
+                        totalDuration = item.seasons.flatMap(s => s.files).reduce((sum, f) => sum + f.duration, 0);
+                    }
+                    const progressPercentage = (watchedItem.playbackPosition / totalDuration) * 100;
+
+                    card.innerHTML = `
+                        <div class="cover-placeholder bg-gray-700 relative">
+                            <img src="${item.coverUrl}" alt="${item.title} Cover" class="cover-image">
+                            <div class="title-overlay flex flex-col items-center justify-center">
+                                <h3 class="text-sm font-bold truncate text-white">${item.title}</h3>
+                                <div class="w-full h-1 bg-gray-500 rounded-full mt-2">
+                                    <div class="h-full bg-red-600 rounded-full" style="width: ${progressPercentage}%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => {
+                        const originalIndex = mediaItems.findIndex(media => media.title === item.title);
+                        openPlayer(originalIndex, watchedItem.playbackPosition);
+                    });
+                    recentlyWatchedContainer.appendChild(card);
+                }
+            });
+            recentlyWatchedSection.classList.toggle('hidden', recentlyWatched.length === 0);
+        }
+        
+        // Galerie-Ansicht rendern, optional mit gefilterten Items
+        function renderVideoCards(itemsToRender = mediaItems) {
             videoContainer.innerHTML = '';
-            mediaItems.forEach((item, index) => {
+            itemsToRender.forEach((item, index) => {
+                const originalIndex = mediaItems.findIndex(mediaItem => mediaItem === item);
                 const card = document.createElement('div');
                 card.className = 'video-card relative rounded-lg overflow-hidden bg-gray-800 shadow-xl';
                 
                 const icon = item.type === 'serie' ? 'fa-tv' : 'fa-film';
 
                 card.innerHTML = `
-                    <div class="cover-placeholder bg-gray-700 flex items-center justify-center">
+                    <button class="delete-btn" data-index="${originalIndex}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="favorite-btn" data-index="${originalIndex}">
+                        <i class="${item.isFavorite ? 'fas' : 'far'} fa-heart" style="color: ${item.isFavorite ? '#e50914' : 'white'};"></i>
+                    </button>
+                    <div class="cover-placeholder bg-gray-700 relative">
                         <img src="${item.coverUrl}" onerror="this.src='https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover';" alt="${item.title} Cover" class="cover-image">
+                        <div class="title-overlay flex items-end justify-center">
+                            <h3 class="text-sm font-bold truncate text-white">${item.title}</h3>
+                        </div>
                     </div>
                     <div class="p-4">
-                        <h3 class="text-sm font-bold truncate">${item.title}</h3>
                         <p class="text-xs text-gray-400 mt-1">${item.genres.join(', ') || (item.type === 'serie' ? 'Serie' : 'Film')}</p>
                     </div>
                 `;
-                card.addEventListener('click', () => {
-                    openPlayer(index);
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('.delete-btn') && !e.target.closest('.favorite-btn')) {
+                        openPlayer(originalIndex);
+                    }
                 });
                 videoContainer.appendChild(card);
             });
         }
 
+        // Funktion zum Löschen eines Elements
+        function deleteMediaItem(index) {
+            mediaItems.splice(index, 1);
+            saveMediaItems();
+            renderAllViews();
+        }
+        
+        // Suche nach Titeln
+        searchInput.addEventListener('keyup', (event) => {
+            const query = event.target.value.toLowerCase();
+            const filteredItems = mediaItems.filter(item =>
+                item.title.toLowerCase().includes(query)
+            );
+            renderVideoCards(filteredItems);
+        });
+
+        // Event-Delegation für den Lösch- und Favoriten-Button
+        videoContainer.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-btn');
+            const favoriteBtn = e.target.closest('.favorite-btn');
+
+            if (deleteBtn) {
+                const index = deleteBtn.dataset.index;
+                const title = mediaItems[index].title;
+                showModal(`Möchtest du "${title}" wirklich löschen?`, false, true);
+                modalConfirmBtn.onclick = () => {
+                    deleteMediaItem(index);
+                    hideModal();
+                };
+            }
+            
+            if (favoriteBtn) {
+                const index = favoriteBtn.dataset.index;
+                mediaItems[index].isFavorite = !mediaItems[index].isFavorite;
+                saveMediaItems();
+                renderAllViews();
+            }
+        });
+
+
         // Player-Ansicht öffnen und Videos abspielen
-        function openPlayer(mediaIndex) {
+        function openPlayer(mediaIndex, startTime = 0) {
             const item = mediaItems[mediaIndex];
             playerTitle.textContent = item.title;
 
+            // Zuletzt gesehen aktualisieren
+            const existingWatched = recentlyWatched.find(i => i.title === item.title);
+            if (existingWatched) {
+                recentlyWatched = recentlyWatched.filter(i => i.title !== item.title);
+            }
+            recentlyWatched.unshift({ title: item.title, playbackPosition: startTime, type: item.type });
+            saveRecentlyWatched();
+            
             if (item.type === 'film') {
                 currentPlaylist = [{ file: item.file }];
                 currentEpisodeIndex = 0;
-                playerSubtitle.textContent = `${item.duration} min`;
-                playCurrentEpisode();
+                playerSubtitle.textContent = ``;
+                playCurrentEpisode(startTime);
             } else if (item.type === 'serie') {
                 currentPlaylist = item.seasons.flatMap(s => s.files);
                 currentEpisodeIndex = 0;
-                playerSubtitle.textContent = `Staffel 1 | Episode 1`;
-                playCurrentEpisode();
+                // Finde die richtige Episode basierend auf der gespeicherten Position
+                const totalDuration = currentPlaylist.reduce((sum, f) => sum + f.duration, 0);
+                
+                let cumulativeDuration = 0;
+                for(let i = 0; i < currentPlaylist.length; i++) {
+                    const episodeDuration = currentPlaylist[i].duration;
+                    if(startTime < cumulativeDuration + episodeDuration) {
+                        currentEpisodeIndex = i;
+                        const episodeStartTime = startTime - cumulativeDuration;
+                        playCurrentEpisode(episodeStartTime);
+                        break;
+                    }
+                    cumulativeDuration += episodeDuration;
+                }
             }
             showView('video-player-view');
         }
 
+        // Speichert den Wiedergabefortschritt und aktualisiert den Fortschrittsbalken
+        playerVideo.addEventListener('timeupdate', () => {
+            const item = mediaItems.find(media => media.title === playerTitle.textContent);
+            if (item) {
+                const watchedItem = recentlyWatched.find(i => i.title === item.title);
+                if (watchedItem) {
+                    watchedItem.playbackPosition = playerVideo.currentTime;
+                    saveRecentlyWatched();
+                }
+            }
+
+            const totalDuration = playerVideo.duration;
+            const currentTime = playerVideo.currentTime;
+            const progressPercentage = (currentTime / totalDuration) * 100;
+            progressBar.style.width = `${progressPercentage}%`;
+            
+            currentTimeEl.textContent = formatTime(currentTime);
+            if (totalDuration) {
+                 totalDurationEl.textContent = formatTime(totalDuration);
+            }
+        });
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
         // Spielt die aktuelle Episode ab und geht zur nächsten
-        function playCurrentEpisode() {
+        function playCurrentEpisode(startTime = 0) {
             if (currentEpisodeIndex < currentPlaylist.length) {
                 const episode = currentPlaylist[currentEpisodeIndex];
                 const videoUrl = URL.createObjectURL(episode.file);
                 playerVideo.src = videoUrl;
                 
                 // Update subtitle for series
-                if (mediaItems.find(item => item.seasons)?.seasons) {
+                const seriesItem = mediaItems.find(item => item.title === playerTitle.textContent && item.type === 'serie');
+                if (seriesItem) {
                     let episodeNumber = 1;
                     let seasonNumber = 1;
-                    let episodeCount = 0;
-                    for (let s of mediaItems.find(item => item.seasons).seasons) {
+                    let cumulativeEpisodes = 0;
+                    for (let s of seriesItem.seasons) {
                         for (let e of s.files) {
-                            if (episodeCount === currentEpisodeIndex) {
+                            if (cumulativeEpisodes === currentEpisodeIndex) {
                                 playerSubtitle.textContent = `Staffel ${seasonNumber} | Episode ${episodeNumber}`;
                                 break;
                             }
-                            episodeCount++;
+                            cumulativeEpisodes++;
                             episodeNumber++;
                         }
-                        if (episodeCount > currentEpisodeIndex) break;
+                        if (cumulativeEpisodes > currentEpisodeIndex) break;
                         seasonNumber++;
                         episodeNumber = 1;
                     }
                 } else {
-                    playerSubtitle.textContent = `${currentPlaylist[currentEpisodeIndex].duration} min`;
+                    playerSubtitle.textContent = ``;
                 }
+                
+                playerVideo.onloadedmetadata = () => {
+                    playerVideo.currentTime = startTime;
+                    playerVideo.play();
+                };
 
                 playerVideo.onended = () => {
                     currentEpisodeIndex++;
-                    playCurrentEpisode();
+                    playCurrentEpisode(0); // Starte die nächste Episode bei 0
                 };
             } else {
                 showModal('Ende der Wiedergabeliste erreicht.', false);
                 backBtn.click();
             }
         }
+        
+        // Rendert alle Sektionen neu
+        function renderAllViews() {
+            renderRecentlyWatched();
+            renderVideoCards();
+        }
 
         // Initiales Rendern
-        renderVideoCards();
+        renderAllViews();
+        
     </script>
 </body>
 </html>
