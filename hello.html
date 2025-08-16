@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arkivum</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome für Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #141414;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        .container {
+            padding: 2rem;
+        }
+        .nav-link:hover {
+            color: #b3b3b3;
+        }
+        .video-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            cursor: pointer;
+            position: relative;
+        }
+        .video-card:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+        .cover-image {
+            width: 100%;
+            height: 240px;
+            object-fit: cover;
+        }
+        .cover-placeholder {
+            width: 100%;
+            height: 240px;
+        }
+        .add-form, .video-player-view {
+            transition: opacity 0.5s ease;
+        }
+        .message-modal {
+            background-color: rgba(0, 0, 0, 0.75);
+            z-index: 100;
+        }
+        .episode-drag-item {
+            cursor: grab;
+        }
+    </style>
+</head>
+<body class="bg-[#141414]">
+
+    <!-- Netflix-ähnliche Navigationsleiste -->
+    <header class="bg-[#141414] text-white p-4 sticky top-0 z-40 shadow-lg">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-8">
+                <h1 class="text-3xl font-bold text-[#e50914]">Arkivum</h1>
+                <nav class="hidden md:flex space-x-2 text-sm">
+                    <a href="#" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view')">Startseite</a>
+                    <a href="#" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view')">Serien</a>
+                    <a href="#" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view')">Filme</a>
+                    <a href="#" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view')">Meine Liste</a>
+                </nav>
+            </div>
+            <div class="flex items-center space-x-4">
+                <input type="text" id="search-input" placeholder="Titel, Personen, Genres" class="px-3 py-1 bg-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500">
+                
+                <button id="add-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-colors duration-200">
+                    <i class="fas fa-plus mr-2"></i>Hinzufügen
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hauptinhalts-Container -->
+    <div id="main-content">
+        <!-- Hauptansicht: Videogalerie -->
+        <main id="gallery-view" class="container mx-auto mt-8">
+            <section>
+                <h2 class="text-2xl font-semibold mb-4">Zuletzt hinzugefügt</h2>
+                <div id="video-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    <!-- Videokarten werden hier dynamisch eingefügt -->
+                </div>
+            </section>
+        </main>
+        
+        <!-- Formular zum Hinzufügen von Medien (zunächst versteckt) -->
+        <div id="add-form" class="hidden fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-95 z-50 p-4 overflow-y-auto">
+            <div class="bg-gray-800 rounded-lg p-8 w-full max-w-2xl my-auto">
+                <h2 class="text-2xl font-bold mb-6 text-center">Neues Medium hinzufügen</h2>
+                
+                <div class="flex space-x-4 mb-6">
+                    <button type="button" id="add-movie-btn" class="flex-1 bg-gray-700 hover:bg-gray-600 rounded-lg p-4 text-center">
+                        <i class="fas fa-film text-3xl mb-2"></i>
+                        <span class="block">Film hinzufügen</span>
+                    </button>
+                    <button type="button" id="add-series-btn" class="flex-1 bg-gray-700 hover:bg-gray-600 rounded-lg p-4 text-center">
+                        <i class="fas fa-tv text-3xl mb-2"></i>
+                        <span class="block">Serie hinzufügen</span>
+                    </button>
+                </div>
+
+                <form id="media-form" class="space-y-4">
+                    <div>
+                        <label for="media-title" class="block text-sm font-medium text-gray-400">Titel</label>
+                        <input type="text" id="media-title" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 p-2 focus:ring-red-500 focus:border-red-500">
+                    </div>
+                    
+                    <button type="button" id="fetch-data-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                        <i class="fas fa-search mr-2"></i>Daten abrufen
+                    </button>
+
+                    <!-- Cover-Vorschau und Genres -->
+                    <div id="info-preview" class="mt-4 hidden p-4 bg-gray-700 rounded-lg flex items-start space-x-4">
+                        <img id="selected-cover" src="" alt="Cover Vorschau" class="w-24 h-36 object-cover rounded-lg">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-1">Informationen</h3>
+                            <p id="genre-display" class="text-sm text-gray-400"></p>
+                        </div>
+                    </div>
+
+                    <!-- Dateiauswahl -->
+                    <div>
+                        <label for="file-input" class="block text-sm font-medium text-gray-400">Dateien auswählen</label>
+                        <input type="file" id="file-input" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700" multiple>
+                    </div>
+
+                    <!-- Spezieller Bereich für Serien -->
+                    <div id="series-section" class="hidden">
+                        <h3 class="text-lg font-semibold mt-6 mb-2">Episoden-Reihenfolge (nach Staffeln)</h3>
+                        <div id="seasons-container" class="space-y-4">
+                            <!-- Staffeln werden hier dynamisch eingefügt -->
+                        </div>
+                        <button type="button" id="add-season-btn" class="w-full mt-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">
+                            <i class="fas fa-plus-circle mr-2"></i>Staffel hinzufügen
+                        </button>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4 mt-6">
+                        <button type="button" id="cancel-btn" class="px-4 py-2 text-gray-400 hover:text-white rounded-lg">Abbrechen</button>
+                        <button type="submit" class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold">Speichern</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Video-Player-Ansicht (zunächst versteckt) -->
+        <div id="video-player-view" class="hidden w-full h-full bg-black">
+            <button id="back-to-gallery-btn" class="fixed top-4 left-4 z-50 text-white text-3xl hover:text-gray-400">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div id="video-info-overlay" class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-8">
+                <h1 id="player-title" class="text-3xl font-bold mb-2"></h1>
+                <h2 id="player-subtitle" class="text-xl text-gray-400"></h2>
+            </div>
+            <video id="player-video" controls class="w-full h-screen object-contain"></video>
+        </div>
+    </div>
+    
+    <!-- Lade- und Fehlermodal -->
+    <div id="message-modal" class="message-modal fixed inset-0 hidden flex items-center justify-center">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-sm text-center shadow-lg">
+            <div id="modal-spinner" class="hidden animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-red-500 mx-auto mb-4"></div>
+            <p id="modal-message" class="text-lg"></p>
+            <button id="modal-close-btn" class="mt-4 px-4 py-2 bg-red-600 rounded-lg hidden">Schließen</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM-Elemente
+        const mainContent = document.getElementById('main-content');
+        const galleryView = document.getElementById('gallery-view');
+        const addForm = document.getElementById('add-form');
+        const videoPlayerView = document.getElementById('video-player-view');
+        const addButton = document.getElementById('add-button');
+        const addMovieBtn = document.getElementById('add-movie-btn');
+        const addSeriesBtn = document.getElementById('add-series-btn');
+        const mediaForm = document.getElementById('media-form');
+        const mediaTitleInput = document.getElementById('media-title');
+        const fileInput = document.getElementById('file-input');
+        const seriesSection = document.getElementById('series-section');
+        const seasonsContainer = document.getElementById('seasons-container');
+        const addSeasonBtn = document.getElementById('add-season-btn');
+        const fetchDataBtn = document.getElementById('fetch-data-btn');
+        const infoPreview = document.getElementById('info-preview');
+        const selectedCoverImg = document.getElementById('selected-cover');
+        const genreDisplay = document.getElementById('genre-display');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const backBtn = document.getElementById('back-to-gallery-btn');
+        const videoContainer = document.getElementById('video-container');
+        const playerVideo = document.getElementById('player-video');
+        const playerTitle = document.getElementById('player-title');
+        const playerSubtitle = document.getElementById('player-subtitle');
+        const messageModal = document.getElementById('message-modal');
+        const modalSpinner = document.getElementById('modal-spinner');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        let mediaItems = JSON.parse(localStorage.getItem('arkivum_media') || '[]');
+        let selectedType = '';
+        let mediaData = { title: '', coverUrl: '', genres: [], files: [], seasons: [] };
+        let currentPlaylist = [];
+        let currentEpisodeIndex = 0;
+        
+        let draggedItem = null;
+
+        // Hilfsfunktion zum Speichern der Daten im lokalen Speicher
+        function saveMediaItems() {
+            localStorage.setItem('arkivum_media', JSON.stringify(mediaItems));
+        }
+
+        // UI-Ansichten wechseln
+        function showView(viewId) {
+            galleryView.classList.add('hidden');
+            addForm.classList.add('hidden');
+            videoPlayerView.classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+        
+        // Modal-Funktionen für Nachrichten und Ladezustände
+        function showModal(message, isSpinner = false) {
+            modalMessage.textContent = message;
+            modalSpinner.classList.toggle('hidden', !isSpinner);
+            modalCloseBtn.classList.toggle('hidden', isSpinner);
+            messageModal.classList.remove('hidden');
+        }
+
+        function hideModal() {
+            messageModal.classList.add('hidden');
+        }
+        modalCloseBtn.addEventListener('click', hideModal);
+
+        // UI-Events
+        addButton.addEventListener('click', () => {
+            mediaForm.reset();
+            seriesSection.classList.add('hidden');
+            seasonsContainer.innerHTML = '';
+            infoPreview.classList.add('hidden');
+            selectedType = '';
+            mediaData = { title: '', coverUrl: '', genres: [], files: [], seasons: [] };
+            showView('add-form');
+        });
+
+        addMovieBtn.addEventListener('click', () => {
+            selectedType = 'film';
+            seriesSection.classList.add('hidden');
+            addMovieBtn.classList.remove('bg-gray-700');
+            addMovieBtn.classList.add('bg-gray-600');
+            addSeriesBtn.classList.remove('bg-gray-600');
+            addSeriesBtn.classList.add('bg-gray-700');
+        });
+
+        addSeriesBtn.addEventListener('click', () => {
+            selectedType = 'serie';
+            seriesSection.classList.remove('hidden');
+            addSeriesBtn.classList.remove('bg-gray-700');
+            addSeriesBtn.classList.add('bg-gray-600');
+            addMovieBtn.classList.remove('bg-gray-600');
+            addMovieBtn.classList.add('bg-gray-700');
+            // Füge standardmäßig eine Staffel hinzu
+            if (seasonsContainer.childElementCount === 0) {
+                addSeasonBtn.click();
+            }
+        });
+        
+        addSeasonBtn.addEventListener('click', () => {
+            const seasonIndex = seasonsContainer.childElementCount + 1;
+            const seasonDiv = document.createElement('div');
+            seasonDiv.id = `season-${seasonIndex}`;
+            seasonDiv.className = 'p-4 bg-gray-700 rounded-lg';
+            seasonDiv.innerHTML = `
+                <h4 class="font-bold mb-2">Staffel ${seasonIndex}</h4>
+                <p class="text-sm text-gray-400 mb-2">Dateien hierher ziehen, um die Reihenfolge zu ändern.</p>
+                <div class="space-y-2" data-season-index="${seasonIndex}"></div>
+            `;
+            seasonsContainer.appendChild(seasonDiv);
+            mediaData.seasons.push({ name: `Staffel ${seasonIndex}`, files: [] });
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            showView('gallery-view');
+        });
+
+        backBtn.addEventListener('click', () => {
+            playerVideo.pause();
+            playerVideo.src = '';
+            showView('gallery-view');
+        });
+
+        fileInput.addEventListener('change', async (event) => {
+            const files = Array.from(event.target.files);
+            
+            if (selectedType === 'film') {
+                const duration = await getDuration(files[0]);
+                mediaData.files = [{ file: files[0], duration }];
+            } else if (selectedType === 'serie') {
+                for (const file of files) {
+                    const duration = await getDuration(file);
+                    mediaData.seasons[0].files.push({ file, duration });
+                }
+                updateEpisodeList(mediaData.seasons[0].files, 0);
+            }
+        });
+
+        // Drag-and-Drop Funktionalität
+        seasonsContainer.addEventListener('dragstart', (e) => {
+            draggedItem = e.target;
+            if (!draggedItem.classList.contains('episode-drag-item')) return;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', null);
+            setTimeout(() => { draggedItem.classList.add('opacity-50'); }, 0);
+        });
+
+        seasonsContainer.addEventListener('dragend', (e) => {
+            if (draggedItem) {
+                draggedItem.classList.remove('opacity-50');
+                draggedItem = null;
+                // Aktualisiere das Datenmodell nach dem Drag-and-Drop
+                updateMediaDataFromDOM();
+            }
+        });
+
+        seasonsContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('.episode-list-container');
+            if (target && draggedItem) {
+                const afterElement = getDragAfterElement(target, e.clientY);
+                if (afterElement == null) {
+                    target.appendChild(draggedItem);
+                } else {
+                    target.insertBefore(draggedItem, afterElement);
+                }
+            }
+        });
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.episode-drag-item:not(.opacity-50)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function updateMediaDataFromDOM() {
+            mediaData.seasons.forEach((season, sIndex) => {
+                const seasonElement = document.querySelector(`[data-season-index="${sIndex + 1}"]`);
+                if (seasonElement) {
+                    const newFiles = Array.from(seasonElement.children).map(el => mediaData.seasons[sIndex].files[el.dataset.fileIndex]);
+                    mediaData.seasons[sIndex].files = newFiles;
+                }
+            });
+        }
+        
+        // Aktualisiert die Episodenliste im UI
+        function updateEpisodeList(files, seasonIndex) {
+            const listContainer = document.querySelector(`[data-season-index="${seasonIndex + 1}"]`);
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+            files.sort((a, b) => a.file.name.localeCompare(b.file.name));
+            files.forEach((fileItem, index) => {
+                const item = document.createElement('div');
+                item.className = 'bg-gray-800 p-2 rounded-lg flex items-center justify-between text-sm episode-drag-item';
+                item.draggable = true;
+                item.dataset.fileIndex = files.indexOf(fileItem);
+                item.textContent = `${index + 1}. ${fileItem.file.name} (${fileItem.duration} min)`;
+                listContainer.appendChild(item);
+            });
+        }
+
+        // Ermittelt die Videodauer
+        function getDuration(file) {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.onloadedmetadata = () => {
+                    URL.revokeObjectURL(video.src);
+                    resolve(Math.round(video.duration / 60)); // Dauer in Minuten
+                };
+                video.onerror = () => {
+                    URL.revokeObjectURL(video.src);
+                    resolve(0); // Bei Fehler 0 zurückgeben
+                };
+                video.src = URL.createObjectURL(file);
+            });
+        }
+
+        // Funktion zur Google Gemini API (mit Platzhalter)
+        async function fetchGeminiData(prompt) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "genres": {
+                                "type": "ARRAY",
+                                "items": { "type": "STRING" }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            showModal('Rufe Daten ab...', true);
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
+                    const jsonResponse = result.candidates[0].content.parts[0].text;
+                    const parsedData = JSON.parse(jsonResponse);
+                    hideModal();
+                    return parsedData.genres;
+                } else {
+                    showModal('Fehler beim Abrufen der Genres.');
+                    return [];
+                }
+            } catch (error) {
+                console.error("API-Fehler:", error);
+                showModal('Fehler beim Abrufen der Genres.');
+                return [];
+            }
+        }
+        
+        // Holt Cover und Genres
+        fetchDataBtn.addEventListener('click', async () => {
+            const title = mediaTitleInput.value;
+            if (!title) {
+                showModal('Bitte einen Titel eingeben, um Daten abzurufen.');
+                return;
+            }
+
+            // Simuliere Cover-Suche
+            const placeholderImageUrl = `https://placehold.co/400x600/1e293b/d1d5db?text=${title.replace(/\s/g, '+')}`;
+            mediaData.coverUrl = placeholderImageUrl;
+            selectedCoverImg.src = mediaData.coverUrl;
+            infoPreview.classList.remove('hidden');
+
+            // Rufe Genres über Gemini API ab
+            const prompt = `Gib mir 3 bis 5 passende Genres für den Film/die Serie: "${title}". Die Antwort soll ein JSON-Objekt mit einem "genres"-Array sein.`;
+            mediaData.genres = await fetchGeminiData(prompt);
+            genreDisplay.textContent = mediaData.genres.join(', ');
+        });
+
+        // Formular absenden
+        mediaForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            mediaData.title = mediaTitleInput.value;
+
+            if (!mediaData.title || (selectedType === 'film' && mediaData.files.length === 0) || (selectedType === 'serie' && mediaData.seasons.length === 0)) {
+                showModal('Bitte Titel und mindestens eine Datei auswählen.');
+                return;
+            }
+            
+            // Verknüpfe Dateien mit dem Datenmodell und speichere es
+            const mediaObject = {
+                title: mediaData.title,
+                type: selectedType,
+                coverUrl: mediaData.coverUrl || 'https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover',
+                genres: mediaData.genres
+            };
+            
+            if (selectedType === 'film') {
+                mediaObject.file = mediaData.files[0].file;
+                mediaObject.duration = mediaData.files[0].duration;
+            } else if (selectedType === 'serie') {
+                mediaObject.seasons = mediaData.seasons.map(season => ({
+                    name: season.name,
+                    files: season.files.map(item => ({ file: item.file, duration: item.duration }))
+                }));
+            }
+
+            mediaItems.push(mediaObject);
+            saveMediaItems();
+            renderVideoCards();
+            showView('gallery-view');
+        });
+
+        // Galerie-Ansicht rendern
+        function renderVideoCards() {
+            videoContainer.innerHTML = '';
+            mediaItems.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'video-card relative rounded-lg overflow-hidden bg-gray-800 shadow-xl';
+                
+                const icon = item.type === 'serie' ? 'fa-tv' : 'fa-film';
+
+                card.innerHTML = `
+                    <div class="cover-placeholder bg-gray-700 flex items-center justify-center">
+                        <img src="${item.coverUrl}" onerror="this.src='https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover';" alt="${item.title} Cover" class="cover-image">
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-sm font-bold truncate">${item.title}</h3>
+                        <p class="text-xs text-gray-400 mt-1">${item.genres.join(', ') || (item.type === 'serie' ? 'Serie' : 'Film')}</p>
+                    </div>
+                `;
+                card.addEventListener('click', () => {
+                    openPlayer(index);
+                });
+                videoContainer.appendChild(card);
+            });
+        }
+
+        // Player-Ansicht öffnen und Videos abspielen
+        function openPlayer(mediaIndex) {
+            const item = mediaItems[mediaIndex];
+            playerTitle.textContent = item.title;
+
+            if (item.type === 'film') {
+                currentPlaylist = [{ file: item.file }];
+                currentEpisodeIndex = 0;
+                playerSubtitle.textContent = `${item.duration} min`;
+                playCurrentEpisode();
+            } else if (item.type === 'serie') {
+                currentPlaylist = item.seasons.flatMap(s => s.files);
+                currentEpisodeIndex = 0;
+                playerSubtitle.textContent = `Staffel 1 | Episode 1`;
+                playCurrentEpisode();
+            }
+            showView('video-player-view');
+        }
+
+        // Spielt die aktuelle Episode ab und geht zur nächsten
+        function playCurrentEpisode() {
+            if (currentEpisodeIndex < currentPlaylist.length) {
+                const episode = currentPlaylist[currentEpisodeIndex];
+                const videoUrl = URL.createObjectURL(episode.file);
+                playerVideo.src = videoUrl;
+                
+                // Update subtitle for series
+                if (mediaItems.find(item => item.seasons)?.seasons) {
+                    let episodeNumber = 1;
+                    let seasonNumber = 1;
+                    let episodeCount = 0;
+                    for (let s of mediaItems.find(item => item.seasons).seasons) {
+                        for (let e of s.files) {
+                            if (episodeCount === currentEpisodeIndex) {
+                                playerSubtitle.textContent = `Staffel ${seasonNumber} | Episode ${episodeNumber}`;
+                                break;
+                            }
+                            episodeCount++;
+                            episodeNumber++;
+                        }
+                        if (episodeCount > currentEpisodeIndex) break;
+                        seasonNumber++;
+                        episodeNumber = 1;
+                    }
+                } else {
+                    playerSubtitle.textContent = `${currentPlaylist[currentEpisodeIndex].duration} min`;
+                }
+
+                playerVideo.onended = () => {
+                    currentEpisodeIndex++;
+                    playCurrentEpisode();
+                };
+            } else {
+                showModal('Ende der Wiedergabeliste erreicht.', false);
+                backBtn.click();
+            }
+        }
+
+        // Initiales Rendern
+        renderVideoCards();
+    </script>
+</body>
+</html>
