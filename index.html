@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arkivum</title>
+    <!-- Oswald Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome für Icons -->
@@ -14,6 +18,9 @@
             background-color: #141414;
             color: white;
             transition: background-color 0.3s ease;
+        }
+        h1, h2, h3, .nav-link, .filter-btn, #add-button {
+            font-family: 'Oswald', sans-serif;
         }
         .container {
             padding: 2rem;
@@ -116,10 +123,10 @@
             <div class="flex items-center space-x-8">
                 <h1 class="text-3xl font-bold text-[#e50914]">Arkivum</h1>
                 <nav class="hidden md:flex space-x-2 text-sm">
-                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('all')">Startseite</a>
-                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('serie')">Serien</a>
-                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('film')">Filme</a>
-                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('favorites')">Meine Liste</a>
+                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('all')"><i class="fas fa-home mr-1"></i>Startseite</a>
+                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('serie')"><i class="fas fa-tv mr-1"></i>Serien</a>
+                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('film')"><i class="fas fa-film mr-1"></i>Filme</a>
+                    <a href="#" class="nav-link px-4 py-2 hover:bg-gray-600 rounded-lg transition-colors duration-200" onclick="showView('gallery-view'); applyFilter('favorites')"><i class="fas fa-heart mr-1"></i>Meine Liste</a>
                 </nav>
             </div>
             <div class="flex items-center space-x-4">
@@ -138,10 +145,10 @@
         <main id="gallery-view" class="container mx-auto mt-8">
             <!-- Filter-Buttons -->
             <div class="flex space-x-4 mb-8">
-                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-red-600 hover:bg-red-700 text-white" data-filter="all">Alle</button>
-                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="film">Filme</button>
-                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="serie">Serien</button>
-                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="favorites">Meine Liste</button>
+                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-red-600 hover:bg-red-700 text-white" data-filter="all"><i class="fas fa-th mr-1"></i>Alle</button>
+                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="film"><i class="fas fa-film mr-1"></i>Filme</button>
+                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="serie"><i class="fas fa-tv mr-1"></i>Serien</button>
+                <button class="filter-btn px-4 py-2 rounded-full font-bold transition-colors duration-200 bg-gray-700 hover:bg-gray-600 text-white" data-filter="favorites"><i class="fas fa-heart mr-1"></i>Meine Liste</button>
             </div>
             
             <!-- Zuletzt gesehen Sektion -->
@@ -188,12 +195,6 @@
                         <input type="text" id="media-title" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 p-2 focus:ring-red-500 focus:border-red-500">
                     </div>
 
-                    <!-- Dateiauswahl für Video-Dateien -->
-                    <div>
-                        <label for="file-input" class="block text-sm font-medium text-gray-400">Video-Dateien auswählen</label>
-                        <input type="file" id="file-input" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700" multiple>
-                    </div>
-
                     <!-- Spezieller Bereich für Serien -->
                     <div id="series-section" class="hidden">
                         <h3 class="text-lg font-semibold mt-6 mb-2">Episoden-Reihenfolge (nach Staffeln)</h3>
@@ -203,6 +204,12 @@
                         <button type="button" id="add-season-btn" class="w-full mt-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">
                             <i class="fas fa-plus-circle mr-2"></i>Staffel hinzufügen
                         </button>
+                    </div>
+
+                    <!-- Dateiauswahl für Filme -->
+                    <div id="movie-files-section">
+                        <label for="file-input-movie" class="block text-sm font-medium text-gray-400">Video-Dateien auswählen</label>
+                        <input type="file" id="file-input-movie" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700" multiple>
                     </div>
                     
                     <div class="flex justify-end space-x-4 mt-6">
@@ -259,7 +266,8 @@
         const mediaForm = document.getElementById('media-form');
         const coverInput = document.getElementById('cover-input');
         const mediaTitleInput = document.getElementById('media-title');
-        const fileInput = document.getElementById('file-input');
+        const movieFilesSection = document.getElementById('movie-files-section');
+        const fileInputMovie = document.getElementById('file-input-movie');
         const seriesSection = document.getElementById('series-section');
         const seasonsContainer = document.getElementById('seasons-container');
         const addSeasonBtn = document.getElementById('add-season-btn');
@@ -303,24 +311,21 @@
                 const serializableItem = { ...item };
                 if (serializableItem.type === 'film') {
                     delete serializableItem.file;
-                    serializableItem.fileUrl = URL.createObjectURL(item.file);
                 } else if (serializableItem.type === 'serie') {
                     serializableItem.seasons.forEach(season => {
                         season.files.forEach(fileItem => {
                             delete fileItem.file;
-                            fileItem.fileUrl = URL.createObjectURL(fileItem.file);
                         });
                     });
                 }
                 if (serializableItem.coverFile) {
                     delete serializableItem.coverFile;
-                    serializableItem.coverUrl = URL.createObjectURL(item.coverFile);
                 }
                 return serializableItem;
             });
             localStorage.setItem('arkivum_media', JSON.stringify(itemsToSave));
         }
-
+        
         // Da wir keine File-Objekte direkt speichern können, verwenden wir URL.createObjectURL.
         // Die gespeicherten URLs sind jedoch nach dem Neuladen der Seite ungültig.
         // Um das zu beheben, speichern wir die Datei selbst nicht, sondern nur die Metadaten.
@@ -332,7 +337,7 @@
         // dauerhaft zu speichern.
         mediaItems = [];
         localStorage.removeItem('arkivum_media');
-        
+
         function saveRecentlyWatched() {
             localStorage.setItem('arkivum_watched', JSON.stringify(recentlyWatched));
         }
@@ -364,6 +369,7 @@
         addButton.addEventListener('click', () => {
             mediaForm.reset();
             seriesSection.classList.add('hidden');
+            movieFilesSection.classList.add('hidden');
             seasonsContainer.innerHTML = '';
             selectedType = '';
             mediaData = { title: '', coverFile: null, genres: [], files: [], seasons: [] };
@@ -373,6 +379,7 @@
         addMovieBtn.addEventListener('click', () => {
             selectedType = 'film';
             seriesSection.classList.add('hidden');
+            movieFilesSection.classList.remove('hidden');
             addMovieBtn.classList.remove('bg-gray-700');
             addMovieBtn.classList.add('bg-gray-600');
             addSeriesBtn.classList.remove('bg-gray-600');
@@ -382,6 +389,7 @@
         addSeriesBtn.addEventListener('click', () => {
             selectedType = 'serie';
             seriesSection.classList.remove('hidden');
+            movieFilesSection.classList.add('hidden');
             addSeriesBtn.classList.remove('bg-gray-700');
             addSeriesBtn.classList.add('bg-gray-600');
             addMovieBtn.classList.remove('bg-gray-600');
@@ -399,11 +407,32 @@
             seasonDiv.className = 'p-4 bg-gray-700 rounded-lg';
             seasonDiv.innerHTML = `
                 <h4 class="font-bold mb-2">Staffel ${seasonIndex + 1}</h4>
+                <div class="flex items-center space-x-2 my-2">
+                    <label for="file-input-season-${seasonIndex}" class="px-4 py-2 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer rounded-full bg-red-600 hover:bg-red-700 text-white">
+                        <i class="fas fa-plus mr-1"></i> Episoden hinzufügen
+                    </label>
+                    <input type="file" id="file-input-season-${seasonIndex}" data-season-index="${seasonIndex}" class="hidden" accept="video/*" multiple>
+                </div>
                 <p class="text-sm text-gray-400 mb-2">Dateien hierher ziehen, um die Reihenfolge zu ändern.</p>
                 <div class="space-y-2 episode-list-container" data-season-index="${seasonIndex}"></div>
             `;
             seasonsContainer.appendChild(seasonDiv);
             mediaData.seasons.push({ name: `Staffel ${seasonIndex + 1}`, files: [] });
+
+            // Neuen Event-Listener für den Dateiupload der neuen Staffel hinzufügen
+            document.getElementById(`file-input-season-${seasonIndex}`).addEventListener('change', async (event) => {
+                const files = Array.from(event.target.files);
+                const sIndex = parseInt(event.target.dataset.seasonIndex);
+                if (mediaData.seasons[sIndex]) {
+                    const episodeFiles = [];
+                    for (const file of files) {
+                        const duration = await getDuration(file);
+                        episodeFiles.push({ file, duration });
+                    }
+                    mediaData.seasons[sIndex].files = mediaData.seasons[sIndex].files.concat(episodeFiles);
+                    updateEpisodeList(mediaData.seasons[sIndex].files, sIndex);
+                }
+            });
         });
         
         cancelBtn.addEventListener('click', () => {
@@ -426,19 +455,11 @@
             }
         });
 
-        fileInput.addEventListener('change', async (event) => {
+        fileInputMovie.addEventListener('change', async (event) => {
             const files = Array.from(event.target.files);
-            
-            if (selectedType === 'film') {
+            if (files.length > 0) {
                 const duration = await getDuration(files[0]);
                 mediaData.files = [{ file: files[0], duration }];
-            } else if (selectedType === 'serie') {
-                mediaData.seasons[0].files = [];
-                for (const file of files) {
-                    const duration = await getDuration(file);
-                    mediaData.seasons[0].files.push({ file, duration });
-                }
-                updateEpisodeList(mediaData.seasons[0].files, 0);
             }
         });
 
@@ -488,9 +509,13 @@
 
         function updateMediaDataFromDOM() {
             mediaData.seasons.forEach((season, sIndex) => {
-                const seasonElement = document.querySelector(`[data-season-index="${sIndex}"]`);
+                const seasonElement = document.querySelector(`.episode-list-container[data-season-index="${sIndex}"]`);
                 if (seasonElement) {
-                    const newFiles = Array.from(seasonElement.children).map(el => mediaData.seasons[sIndex].files[el.dataset.fileIndex]);
+                    const newFiles = Array.from(seasonElement.children).map(el => {
+                        const originalFileIndex = parseInt(el.dataset.originalIndex);
+                        const originalSeasonIndex = parseInt(el.dataset.originalSeason);
+                        return mediaData.seasons[originalSeasonIndex].files[originalFileIndex];
+                    });
                     mediaData.seasons[sIndex].files = newFiles;
                 }
             });
@@ -498,16 +523,16 @@
         
         // Aktualisiert die Episodenliste im UI
         function updateEpisodeList(files, seasonIndex) {
-            const listContainer = document.querySelector(`[data-season-index="${seasonIndex}"]`);
+            const listContainer = document.querySelector(`.episode-list-container[data-season-index="${seasonIndex}"]`);
             if (!listContainer) return;
             listContainer.innerHTML = '';
-            files.sort((a, b) => a.file.name.localeCompare(b.file.name));
             files.forEach((fileItem, index) => {
                 const item = document.createElement('div');
                 item.className = 'bg-gray-800 p-2 rounded-lg flex items-center justify-between text-sm episode-drag-item';
                 item.draggable = true;
-                item.dataset.fileIndex = files.indexOf(fileItem);
-                item.textContent = `${index + 1}. ${fileItem.file.name} (${fileItem.duration} min)`;
+                item.dataset.originalIndex = mediaData.seasons[seasonIndex].files.indexOf(fileItem);
+                item.dataset.originalSeason = seasonIndex;
+                item.textContent = `${index + 1}. ${fileItem.file.name}`;
                 listContainer.appendChild(item);
             });
         }
@@ -627,7 +652,7 @@
 
                     card.innerHTML = `
                         <div class="cover-placeholder bg-gray-700 relative">
-                            <img src="${item.coverUrl}" alt="${item.title} Cover" class="cover-image">
+                            <img src="${item.coverUrl}" onerror="this.src='https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover';" alt="${item.title} Cover" class="cover-image">
                             <div class="title-overlay flex flex-col items-center justify-center">
                                 <h3 class="text-sm font-bold truncate text-white">${item.title}</h3>
                                 <div class="w-full h-1 bg-gray-500 rounded-full mt-2">
