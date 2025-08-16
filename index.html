@@ -394,7 +394,7 @@
             });
         }
 
-        // Funktion zur Google Gemini API (mit Platzhalter)
+        // Funktion zur Google Gemini API für Genres
         async function fetchGeminiData(prompt) {
             const apiKey = "AIzaSyBH1jxoVg6mkk1H4RGBMxtI_YqCU-u1fZQ";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
@@ -432,24 +432,58 @@
                 if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts) {
                     const jsonResponse = result.candidates[0].content.parts[0].text;
                     const parsedData = JSON.parse(jsonResponse);
-                    hideModal();
                     return parsedData.genres;
                 } else {
-                    showModal('Fehler beim Abrufen der Genres: Unerwartete Antwortstruktur.');
-                    return [];
+                    throw new Error('Unerwartete Antwortstruktur.');
                 }
             } catch (error) {
                 console.error("API-Fehler:", error);
-                // Zusätzliche Fehlerbehandlung für JSON-Parsing
-                if (error instanceof SyntaxError) {
-                    showModal('Fehler beim Abrufen der Genres: Ungültiges JSON in der Antwort.');
-                } else {
-                    showModal(`Fehler beim Abrufen der Genres: ${error.message}`);
-                }
-                return [];
+                throw new Error(`Fehler beim Abrufen der Genres: ${error.message}`);
+            } finally {
+                hideModal();
             }
         }
-        
+
+        // Funktion zur Generierung eines Covers mit der Gemini API
+        async function generateCoverImage(title) {
+            const prompt = `Erstelle ein Film- oder Serienposter im Hochformat mit dem Titel "${title}". Der Stil sollte modern und ansprechend sein.`;
+            const payload = {
+                instances: { prompt: prompt },
+                parameters: { "sampleCount": 1 }
+            };
+            const apiKey = "AIzaSyBH1jxoVg6mkk1H4RGBMxtI_YqCU-u1fZQ";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+            showModal('Generiere Vorschaubild...', true);
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP-Fehler: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                    const base64Data = result.predictions[0].bytesBase64Encoded;
+                    return `data:image/png;base64,${base64Data}`;
+                } else {
+                    throw new Error('Unerwartete Antwortstruktur oder fehlendes Bild.');
+                }
+            } catch (error) {
+                console.error("API-Fehler:", error);
+                showModal(`Fehler beim Generieren des Bildes: ${error.message}`);
+                return null;
+            } finally {
+                hideModal();
+            }
+        }
+
         // Holt Cover und Genres
         fetchDataBtn.addEventListener('click', async () => {
             const title = mediaTitleInput.value;
@@ -458,17 +492,27 @@
                 return;
             }
 
-            // Simuliere Cover-Suche
-            const placeholderImageUrl = `https://placehold.co/400x600/1e293b/d1d5db?text=${title.replace(/\s/g, '+')}`;
-            mediaData.coverUrl = placeholderImageUrl;
-            selectedCoverImg.src = mediaData.coverUrl;
             infoPreview.classList.remove('hidden');
 
-            // Rufe Genres über Gemini API ab
-            const prompt = `Gib mir 3 bis 5 passende Genres für den Film/die Serie: "${title}". Die Antwort soll ein JSON-Objekt mit einem "genres"-Array sein.`;
-            mediaData.genres = await fetchGeminiData(prompt);
-            genreDisplay.textContent = mediaData.genres.join(', ');
+            try {
+                const coverUrl = await generateCoverImage(title);
+                if (coverUrl) {
+                    mediaData.coverUrl = coverUrl;
+                    selectedCoverImg.src = mediaData.coverUrl;
+                } else {
+                    mediaData.coverUrl = 'https://placehold.co/400x600/1e293b/d1d5db?text=Kein+Cover';
+                    selectedCoverImg.src = mediaData.coverUrl;
+                }
+                
+                const genres = await fetchGeminiData(`Gib mir 3 bis 5 passende Genres für den Film/die Serie: "${title}". Die Antwort soll ein JSON-Objekt mit einem "genres"-Array sein.`);
+                mediaData.genres = genres;
+                genreDisplay.textContent = mediaData.genres.join(', ') || 'Genres nicht gefunden';
+
+            } catch (error) {
+                showModal(error.message);
+            }
         });
+
 
         // Formular absenden
         mediaForm.addEventListener('submit', (event) => {
